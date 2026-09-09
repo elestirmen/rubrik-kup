@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rubrik — Küp Oyunu ve Çözüm Yardımcısı</title>
+<meta name="description" content="Tarayıcıda 3B Rubik küpü oyna, süre tut ve evindeki küpü adım adım yönergeyle çöz. Renkleri gir, çözüm rehberi seni elinden tutup götürsün.">
+<meta name="theme-color" content="#06070d">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="img/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta property="og:title" content="Rubrik — Küp Oyunu ve Çözüm Yardımcısı">
+<meta property="og:description" content="3B küp oyunu, kronometre ve gerçek küpün için adım adım çözüm rehberi.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://rubrik.perinet.org/">
+<meta property="og:image" content="https://rubrik.perinet.org/img/cover.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css?v=1">
+</head>
+<body>
+
+<div class="bg" aria-hidden="true">
+  <span class="bg__orb bg__orb--1"></span>
+  <span class="bg__orb bg__orb--2"></span>
+  <span class="bg__orb bg__orb--3"></span>
+  <span class="bg__grid"></span>
+  <span class="bg__noise"></span>
+</div>
+
+<a class="skip" href="#main">İçeriğe geç</a>
+
+<header class="top">
+  <a class="brand" href="./" aria-label="Rubrik ana sayfa">
+    <span class="brand__mark" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+    </span>
+    <span class="brand__text">RUBRİK<em>küp</em></span>
+  </a>
+
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Bölümler">
+    <button class="tab is-active" role="tab" aria-selected="true" data-view="play" id="tab-play">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5V7Z"/></svg><span>Oyna</span>
+    </button>
+    <button class="tab" role="tab" aria-selected="false" data-view="solve" id="tab-solve">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z"/><path d="M12 22V12M3 7l9 5 9-5"/></svg><span>Küpümü Çöz</span>
+    </button>
+    <button class="tab" role="tab" aria-selected="false" data-view="learn" id="tab-learn">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v18H6.5A2.5 2.5 0 0 1 4 18.5v-13Z"/><path d="M8 7h8M8 11h6"/></svg><span>Öğren</span>
+    </button>
+  </nav>
+
+  <div class="top__right">
+    <button class="icon-btn" id="theme-btn" type="button" title="Aydınlık / karanlık tema" aria-label="Tema değiştir">
+      <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.6"/><path d="M12 1.6v2.2M12 20.2v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M1.6 12h2.2M20.2 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
+    </button>
+    <a class="icon-btn" href="https://perinet.org" title="Oyun Merkezi" aria-label="Oyun Merkezi">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z"/></svg>
+    </a>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ============================ OYNA ============================ -->
+  <section class="view is-active" id="view-play" role="tabpanel" aria-labelledby="tab-play">
+    <div class="layout">
+      <div class="layout__main">
+        <div class="cube-shell">
+          <div class="cube-shell__hud">
+            <div class="hud-time" id="play-timer" aria-live="off">0.00</div>
+            <div class="hud-meta">
+              <span id="play-movecount">0 hamle</span>
+              <span class="dot"></span>
+              <span id="play-status">Karıştır ve başla</span>
+            </div>
+          </div>
+          <div class="cube-stage" id="play-stage" tabindex="0" role="application"
+               aria-label="3 boyutlu küp. Sürükleyerek çevir, tıklayıp sürükleyerek katman döndür. Klavye: U R F D L B, Shift ile ters, Alt ile çift.">
+          </div>
+          <div class="cube-shell__foot">
+            <button class="btn btn--ghost" id="btn-orbit-reset" type="button" title="Görünümü sıfırla">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg> Görünüm
+            </button>
+            <div class="seg" role="group" aria-label="Animasyon hızı">
+              <button class="seg__btn" data-speed="380" type="button">Yavaş</button>
+              <button class="seg__btn is-active" data-speed="220" type="button">Normal</button>
+              <button class="seg__btn" data-speed="120" type="button">Hızlı</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="pad card" aria-label="Hareket tuşları">
+          <div class="pad__head">
+            <h2 class="card__title">Hareketler</h2>
+            <span class="hint">Klavye: <kbd>U</kbd><kbd>R</kbd><kbd>F</kbd><kbd>D</kbd><kbd>L</kbd><kbd>B</kbd> · <kbd>Shift</kbd> ters · <kbd>Alt</kbd> çift</span>
+          </div>
+          <div class="pad__grid" id="pad-grid"></div>
+        </div>
+      </div>
+
+      <aside class="layout__side">
+        <div class="card card--timer">
+          <div class="card__head">
+            <h2 class="card__title">Kronometre</h2>
+            <button class="chip-toggle" id="btn-inspection" type="button" aria-pressed="false" title="15 saniye inceleme süresi">15 sn inceleme</button>
+          </div>
+          <div class="timer-big" id="timer-big">0.00</div>
+          <p class="timer-help" id="timer-help">Karıştır, sonra <kbd>Boşluk</kbd> ile başlat. İlk hamlede sayaç çalışır.</p>
+          <div class="btn-row">
+            <button class="btn btn--primary" id="btn-scramble" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6M4 4v6M20 20h-6M20 20v-6M4 4l7 7M20 20l-7-7M20 4l-7 7M4 20l7-7"/></svg>
+              Karıştır
+            </button>
+            <button class="btn" id="btn-reset" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>
+              Sıfırla
+            </button>
+          </div>
+          <div class="scramble" id="scramble-box" hidden>
+            <span class="scramble__label">Karıştırma</span>
+            <div class="scramble__moves" id="scramble-moves"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__head">
+            <h2 class="card__title">Yardım</h2>
+          </div>
+          <div class="btn-row btn-row--wrap">
+            <button class="btn" id="btn-undo" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12H9"/></svg>
+              Geri al
+            </button>
+            <button class="btn" id="btn-hint" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z"/></svg>
+              İpucu
+            </button>
+            <button class="btn" id="btn-autosolve" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 3 3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6Z" transform="translate(6 0) scale(.8)"/></svg>
+              Otomatik çöz
+            </button>
+          </div>
+          <div class="hint-box" id="hint-box" hidden></div>
+        </div>
+
+        <div class="card">
+          <div class="card__head">
+            <h2 class="card__title">İstatistik</h2>
+            <button class="link-btn" id="btn-clear-stats" type="button">Temizle</button>
+          </div>
+          <div class="stats" id="stats-grid">
+            <div class="stat"><span class="stat__k">En iyi</span><span class="stat__v" id="stat-best">—</span></div>
+            <div class="stat"><span class="stat__k">Son</span><span class="stat__v" id="stat-last">—</span></div>
+            <div class="stat"><span class="stat__k">ao5</span><span class="stat__v" id="stat-ao5">—</span></div>
+            <div class="stat"><span class="stat__k">ao12</span><span class="stat__v" id="stat-ao12">—</span></div>
+          </div>
+          <ol class="solve-list" id="solve-list"></ol>
+        </div>
+
+        <div class="card">
+          <div class="card__head"><h2 class="card__title">Görünüm</h2></div>
+          <label class="field">
+            <span class="field__label">Küp renkleri</span>
+            <select id="palette-select" class="select">
+              <option value="klasik">Klasik</option>
+              <option value="canli">Canlı</option>
+              <option value="pastel">Pastel</option>
+              <option value="neon">Neon</option>
+            </select>
+          </label>
+          <label class="switch">
+            <input type="checkbox" id="sound-toggle" checked>
+            <span class="switch__ui" aria-hidden="true"></span>
+            <span>Hareket sesi</span>
+          </label>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ========================= KÜPÜMÜ ÇÖZ ========================= -->
+  <section class="view" id="view-solve" role="tabpanel" aria-labelledby="tab-solve" hidden>
+
+    <div class="wizard">
+      <ol class="steps" id="wizard-steps">
+        <li class="steps__item is-active" data-step="1"><span class="steps__n">1</span><span>Renkleri gir</span></li>
+        <li class="steps__item" data-step="2"><span class="steps__n">2</span><span>Çözüm rehberi</span></li>
+      </ol>
+    </div>
+
+    <!-- 1. adım: renk girişi -->
+    <div class="layout" id="solve-input">
+      <div class="layout__main">
+        <div class="card card--net">
+          <div class="card__head">
+            <div>
+              <h2 class="card__title">Küpünün renklerini gir</h2>
+              <p class="card__sub" id="net-sub">Küpü aşağıdaki gibi tut ve her kareyi boya. Merkezler hazır.</p>
+            </div>
+            <div class="net-progress"><span id="net-filled">6</span>/54</div>
+          </div>
+
+          <div class="palette" id="palette" role="radiogroup" aria-label="Renk seç"></div>
+
+          <div class="net-wrap">
+            <div class="net" id="net"></div>
+          </div>
+
+          <div class="net-actions">
+            <label class="switch switch--sm">
+              <input type="checkbox" id="autoadvance" checked>
+              <span class="switch__ui" aria-hidden="true"></span>
+              <span>Sırayla boya (tıkla → sıradaki kareye geç)</span>
+            </label>
+            <div class="btn-row btn-row--wrap">
+              <button class="btn btn--sm" id="btn-net-undo" type="button">Geri al</button>
+              <button class="btn btn--sm" id="btn-net-clear" type="button">Temizle</button>
+              <button class="btn btn--sm" id="btn-net-sample" type="button">Örnek karışık küp</button>
+              <button class="btn btn--sm" id="btn-net-centers" type="button" aria-pressed="false">Merkezleri değiştir</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="layout__side">
+        <div class="card card--hold">
+          <div class="card__head"><h2 class="card__title">Küpü nasıl tut</h2></div>
+          <div class="hold">
+            <div class="hold__cube" id="hold-stage" aria-hidden="true"></div>
+            <ul class="hold__list" id="hold-list"></ul>
+          </div>
+          <p class="card__note">Renkleri girerken ve çözerken küpü <strong>aynı şekilde</strong> tut. Yönü değiştirirsen yönergeler şaşar.</p>
+        </div>
+
+        <div class="card">
+          <div class="card__head"><h2 class="card__title">Renk sayacı</h2></div>
+          <div class="counters" id="counters"></div>
+        </div>
+
+        <div class="card card--cta">
+          <div class="validation" id="validation"></div>
+          <button class="btn btn--primary btn--lg btn--block" id="btn-solve" type="button" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+            Çözümü oluştur
+          </button>
+          <p class="card__note">Bilgiler tarayıcında kalır, hiçbir yere gönderilmez.</p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- 2. adım: rehber -->
+    <div class="layout" id="solve-guide" hidden>
+      <div class="layout__main">
+        <div class="cube-shell">
+          <div class="cube-shell__hud">
+            <div class="guide-stagename" id="guide-stagename">—</div>
+            <div class="hud-meta">
+              <span id="guide-progress-text">0 / 0 hamle</span>
+              <span class="dot"></span>
+              <span class="hold-chip" id="guide-hold"></span>
+            </div>
+          </div>
+          <div class="cube-stage" id="guide-stage" aria-label="Çözümün o anki durumu"></div>
+          <div class="cube-shell__foot cube-shell__foot--guide">
+            <button class="btn btn--ghost" id="guide-prev" type="button" title="Önceki hamle (sol ok)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg> Önceki
+            </button>
+            <button class="btn btn--primary" id="guide-next" type="button" title="Sonraki hamle (sağ ok / boşluk)">
+              Sonraki hamle <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+            <button class="btn btn--ghost" id="guide-play" type="button" title="Adımı baştan oynat">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5V7Z"/></svg> Adımı oynat
+            </button>
+          </div>
+          <div class="progress"><span class="progress__bar" id="guide-progress"></span></div>
+        </div>
+
+        <div class="card card--step">
+          <div class="step-head">
+            <span class="step-badge" id="step-badge">Adım 1</span>
+            <h2 class="step-title" id="step-title">—</h2>
+            <span class="step-alg" id="step-alg"></span>
+          </div>
+          <div class="movecards" id="movecards" aria-label="Bu adımın hamleleri"></div>
+          <div class="now-move" id="now-move" aria-live="polite"></div>
+          <p class="step-note" id="step-note"></p>
+          <div class="step-foot">
+            <button class="btn" id="step-prev" type="button">Önceki adım</button>
+            <button class="btn btn--primary" id="step-done" type="button">Bu adımı yaptım</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="layout__side">
+        <div class="card">
+          <div class="card__head"><h2 class="card__title">Yol haritası</h2></div>
+          <ol class="timeline" id="timeline"></ol>
+        </div>
+        <div class="card">
+          <div class="card__head"><h2 class="card__title">Bu aşamada ne yapıyoruz</h2></div>
+          <p class="stage-intro" id="stage-intro"></p>
+          <p class="stage-goal" id="stage-goal"></p>
+        </div>
+        <div class="card">
+          <div class="card__head">
+            <h2 class="card__title">Tüm çözüm</h2>
+            <span class="badge" id="total-moves">0 hamle</span>
+          </div>
+          <div class="btn-row btn-row--wrap">
+            <button class="btn btn--sm" id="btn-copy-solution" type="button">Kopyala</button>
+            <button class="btn btn--sm" id="btn-print" type="button">Yazdır</button>
+            <button class="btn btn--sm" id="btn-restart-input" type="button">Küpü yeniden gir</button>
+          </div>
+          <div class="all-moves" id="all-moves"></div>
+        </div>
+        <div class="card card--tip">
+          <h3 class="tip__title">Kayboldun mu?</h3>
+          <p>Yanlış hamle yaptıysan endişelenme: küpün mevcut halini <strong>yeniden gir</strong>, rehber en baştan doğru yolu hesaplar.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============================ ÖĞREN =========================== -->
+  <section class="view" id="view-learn" role="tabpanel" aria-labelledby="tab-learn" hidden>
+    <div class="layout layout--learn">
+      <div class="layout__main">
+        <div class="card">
+          <div class="card__head">
+            <div>
+              <h2 class="card__title">Notasyon</h2>
+              <p class="card__sub">Harf yüzü, üs işareti yönü söyler. Karta dokun, küpte gör.</p>
+            </div>
+          </div>
+          <div class="notation" id="notation-grid"></div>
+        </div>
+
+        <div class="card">
+          <div class="card__head">
+            <div>
+              <h2 class="card__title">Yöntem: katman katman</h2>
+              <p class="card__sub">Rehberin izlediği yol. Yedi aşama, alttan yukarı.</p>
+            </div>
+          </div>
+          <ol class="method" id="method-list"></ol>
+        </div>
+
+        <div class="card">
+          <div class="card__head">
+            <div>
+              <h2 class="card__title">Algoritma kartları</h2>
+              <p class="card__sub">Ezberlenecek asgari set. Karta dokununca küpte oynar.</p>
+            </div>
+          </div>
+          <div class="algs" id="algs-grid"></div>
+        </div>
+      </div>
+
+      <aside class="layout__side">
+        <div class="card card--sticky">
+          <div class="card__head"><h2 class="card__title">Deneme küpü</h2></div>
+          <div class="cube-stage cube-stage--mini" id="learn-stage" aria-label="Öğrenme küpü"></div>
+          <div class="btn-row btn-row--wrap">
+            <button class="btn btn--sm" id="learn-reset" type="button">Sıfırla</button>
+            <button class="btn btn--sm" id="learn-scramble" type="button">Karıştır</button>
+          </div>
+          <p class="card__note">Notasyon ve algoritma kartlarına dokun; hareketi burada oynatır.</p>
+        </div>
+        <div class="card card--tip">
+          <h3 class="tip__title">İpuçları</h3>
+          <ul class="tips">
+            <li>Küpü çözerken <strong>yönünü değiştirme</strong>: alt yüz hep altta kalsın.</li>
+            <li>Algoritmayı yarıda bırakma; yanlış gittiğini düşünsen bile sonuna kadar uygula.</li>
+            <li>Bir aşama biterse önceki katmanları bozma. Rehberdeki hamleler bunu garanti eder.</li>
+            <li>Takıldığın yerde küpün halini <em>Küpümü Çöz</em> bölümüne gir; kaldığın yerden yol gösterir.</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <p>Rubrik · <a href="https://perinet.org">Oyun Merkezi</a></p>
+  <p class="foot__dim">Çözümler tarayıcında hesaplanır.</p>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="confetti" id="confetti" aria-hidden="true"></div>
+
+<script src="js/cube.js?v=1"></script>
+<script src="js/geometry.js?v=1"></script>
+<script src="js/solver.js?v=1"></script>
+<script src="js/scene.js?v=1"></script>
+<script src="js/content.js?v=1"></script>
+<script src="js/app.js?v=1"></script>
+</body>
+</html>
