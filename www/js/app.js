@@ -65,6 +65,11 @@
   function colorName(face) { return Content.COLOR_NAMES[scheme[face]]; }
 
   var toastTimer = null;
+  function coarsePointer() {
+    try { return !!(root.matchMedia && root.matchMedia('(pointer: coarse)').matches); }
+    catch (e) { return false; }
+  }
+
   function toast(msg, ms) {
     var t = $('#toast');
     t.textContent = msg;
@@ -185,7 +190,7 @@
       scene = Scene.create({
         mount: $('#play-stage'),
         zoom: 5.35, zoom0: 5.35,
-        badge: 'Sürükle: çevir · Kareyi sürükle: katman',
+        badge: coarsePointer() ? 'Kareyi sürükle: hamle · Boşluğu sürükle: görünüm' : 'Sol tuş: hamle · Sağ tuş: görünüm',
         onUserMove: function (mv) { doMove(mv, true); }
       });
       scene.setSpeed(settings.speed);
@@ -577,7 +582,7 @@
       bind();
       resetColors();
       var saved = load(LS.net, null);
-      if (saved && saved.colors && saved.colors.length === 54) {
+      if (saved && saved.colors && saved.colors.length === 54 && Cube.partialCheck(saved.colors).ok) {
         colors = saved.colors.slice();
       }
       refresh();
@@ -651,6 +656,14 @@
       });
     }
 
+    function refreshPaletteState(counts) {
+      $$('#palette .pal').forEach(function (b) {
+        var full = counts[b.dataset.face] >= 9;
+        b.classList.toggle('is-full', full);
+        b.title = full ? colorName(b.dataset.face) + ': 9/9 tamam' : '';
+      });
+    }
+
     function setActive(f) {
       active = f;
       $$('#palette .pal').forEach(function (b) {
@@ -669,14 +682,69 @@
 
     function isCenter(idx) { return idx % 9 === 4; }
 
+    function countOf(face) {
+      var n = 0;
+      for (var i = 0; i < 54; i++) if (colors[i] === face) n++;
+      return n;
+    }
+
+    function pieceWord(kind) { return kind === 'edge' ? 'kenar' : 'köşe'; }
+
+    function badPieceText(b) {
+      var names = b.colors.map(function (c) { return colorName(c); }).join(' + ');
+      if (b.reason === 'yok') {
+        return 'Böyle bir ' + pieceWord(b.kind) + ' parçası yok: ' + names +
+          '. Gerçek küpte bu renkler aynı parçada yan yana gelmez.';
+      }
+      return 'Bu ' + pieceWord(b.kind) + ' parçası zaten girilmiş: ' + names +
+        '. Her parça küpte yalnızca bir kez bulunur.';
+    }
+
+    /* Hatalı parçalar arasından dokunulan kareye ait olanı seç */
+    function pickBad(bad, idx) {
+      var own = Cube.pieceOf(idx);
+      for (var i = 0; i < bad.length; i++) {
+        if (own && bad[i].kind === own.kind && bad[i].slot === own.slot) return bad[i];
+      }
+      return bad[0];
+    }
+
+    function flashCell(idx) {
+      var cell = $('#net .net-cell[data-index="' + idx + '"]');
+      if (!cell) return;
+      cell.classList.remove('is-bad');
+      void cell.offsetWidth;
+      cell.classList.add('is-bad');
+      setTimeout(function () { cell.classList.remove('is-bad'); }, 420);
+    }
+
     function onCellClick(idx, dragging) {
       if (isCenter(idx)) {
         if (!editCenters) { toast('Merkezler sabit. Değiştirmek için "Merkezleri değiştir".'); return; }
         swapCenters(FACES[Math.floor(idx / 9)], active);
         return;
       }
-      undoStack.push({ idx: idx, prev: colors[idx] });
+      /* bir renk en fazla 9 kare olabilir */
+      if (colors[idx] !== active && countOf(active) >= 9) {
+        toast(colorName(active) + ' renginden zaten 9 kare var. Fazlasını boyamak için önce birini sil.');
+        if (!dragging) sfx('error');
+        return;
+      }
+      /* parça tutarlılığı: kenar 2, köşe 3 renk taşır ve birleşim gerçek bir
+         parçaya uymalı; aynı parça iki yerde olamaz */
+      var prev = colors[idx];
+      var wasBad = Cube.partialCheck(colors).bad.length;
       colors[idx] = active;
+      var chk = Cube.partialCheck(colors);
+      if (chk.bad.length > wasBad) {
+        colors[idx] = prev;
+        toast(badPieceText(pickBad(chk.bad, idx)), 3600);
+        if (!dragging) sfx('error');
+        flashCell(idx);
+        return;
+      }
+
+      undoStack.push({ idx: idx, prev: prev });
       if ($('#autoadvance').checked) {
         var o = ORDER.indexOf(idx);
         cursor = Math.min(ORDER.length - 1, (o < 0 ? cursor : o) + 1);
@@ -770,9 +838,10 @@
         cbox.appendChild(c);
       });
 
+      refreshPaletteState(counts);
       renderHold();
       if (preview) preview.setFacelets(colors);
-      validate(filled);
+      validate(filled, counts);
       store(LS.net, { colors: colors, scheme: scheme });
     }
 
@@ -803,12 +872,27 @@
       return m;
     }
 
-    function validate(filled) {
+    function validate(filled, counts) {
       var box = $('#validation');
       box.innerHTML = '';
       ready = false;
+      var over = FACES.filter(function (f) { return counts[f] > 9; });
+      if (over.length) {
+        over.forEach(function (f) {
+          box.appendChild(msg('bad', colorName(f) + ' renginden ' + counts[f] + ' kare var, en fazla 9 olabilir.'));
+        });
+        $('#btn-solve').disabled = true;
+        return;
+      }
+      var chk = Cube.partialCheck(colors);
+      if (!chk.ok) {
+        chk.bad.slice(0, 3).forEach(function (b) { box.appendChild(msg('bad', badPieceText(b))); });
+        $('#btn-solve').disabled = true;
+        return;
+      }
       if (filled < 54) {
         box.appendChild(msg('warn', (54 - filled) + ' kare daha boyanmalı. Kalan kareler sönük görünür.'));
+        box.appendChild(msg('ok', 'Girilen kenar ve köşeler tutarlı.'));
       } else {
         var res = Cube.fromFacelets(colors);
         if (res.state) {

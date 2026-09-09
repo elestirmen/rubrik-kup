@@ -308,6 +308,95 @@
     return { state: s, errors: [] };
   }
 
+  /* --------------------------------------------------------------
+     Kısmi girişin parça tutarlılığı.
+     Her kenar 2, her köşe 3 kareden oluşur: boyanmış kareler gerçek bir
+     parçaya uymalı ve iki slot aynı parçayı paylaşamaz. Yarım boyanmış
+     küplerde de çalışır; eksik kareler serbest bırakılır.
+     Dönen değer: { ok, bad: [{ kind, slot, name, colors, reason }] }
+     reason: 'yok'    -> bu renk birleşimine sahip parça yok
+             'tekrar' -> parçalar birbirine tutarlı biçimde dağıtılamıyor
+     -------------------------------------------------------------- */
+  function candidates(f, slots, pieces, size) {
+    var out = [], i, j, r, n, ok;
+    for (i = 0; i < slots.length; i++) {
+      var cand = [];
+      for (j = 0; j < pieces.length; j++) {
+        for (r = 0; r < size; r++) {
+          ok = true;
+          for (n = 0; n < size; n++) {
+            var c = f[slots[i][n]];
+            if (c && c !== pieces[j][(n + r) % size]) { ok = false; break; }
+          }
+          if (ok) { cand.push(j); break; }
+        }
+      }
+      out.push(cand);
+    }
+    return out;
+  }
+
+  /* Maksimum eşleme (Kuhn): eşlenemeyen slotların listesini döndürür.
+     Az seçenekli slotlar önce işlenir, böylece suçlu slot daha anlaşılır olur. */
+  function unmatchedSlots(cand) {
+    var n = cand.length, i;
+    var pieceTo = new Array(n).fill(-1);
+    var order = [];
+    for (i = 0; i < n; i++) order.push(i);
+    order.sort(function (a, b) { return cand[a].length - cand[b].length; });
+
+    function augment(u, seen) {
+      for (var t = 0; t < cand[u].length; t++) {
+        var p = cand[u][t];
+        if (seen[p]) continue;
+        seen[p] = true;
+        if (pieceTo[p] < 0 || augment(pieceTo[p], seen)) { pieceTo[p] = u; return true; }
+      }
+      return false;
+    }
+    var out = [];
+    for (i = 0; i < order.length; i++) {
+      if (!augment(order[i], new Array(n).fill(false))) out.push(order[i]);
+    }
+    return out;
+  }
+
+  function partialCheck(input) {
+    var f = typeof input === 'string' ? input.split('') : input;
+    var bad = [], i;
+
+    function collect(kind, slots, pieces, names, size) {
+      var cand = candidates(f, slots, pieces, size);
+      var empty = [];
+      for (var k = 0; k < cand.length; k++) {
+        if (!cand[k].length) empty.push(k);
+      }
+      var list = empty.length ? empty : unmatchedSlots(cand);
+      var reason = empty.length ? 'yok' : 'tekrar';
+      for (var m = 0; m < list.length; m++) {
+        var slot = list[m], cols = [];
+        for (var n = 0; n < size; n++) if (f[slots[slot][n]]) cols.push(f[slots[slot][n]]);
+        bad.push({ kind: kind, slot: slot, name: names[slot], colors: cols, reason: reason });
+      }
+    }
+
+    collect('corner', CORNER_FACELET, CORNER_COLOR, CORNER_NAMES, 3);
+    collect('edge', EDGE_FACELET, EDGE_COLOR, EDGE_NAMES, 2);
+    return { ok: bad.length === 0, bad: bad };
+  }
+
+  /* Bir facelet indeksinin ait olduğu parça: { kind, slot } ya da merkezse null */
+  function pieceOf(idx) {
+    var i, n;
+    for (i = 0; i < 8; i++) {
+      for (n = 0; n < 3; n++) if (CORNER_FACELET[i][n] === idx) return { kind: 'corner', slot: i, name: CORNER_NAMES[i] };
+    }
+    for (i = 0; i < 12; i++) {
+      for (n = 0; n < 2; n++) if (EDGE_FACELET[i][n] === idx) return { kind: 'edge', slot: i, name: EDGE_NAMES[i] };
+    }
+    return null;
+  }
+
   /* Kübik durumun çözülebilirlik denetimi */
   function validate(s) {
     var errors = [], i;
@@ -393,6 +482,7 @@
     simplify: simplify, rotateAlg: rotateAlg, rotateFaceLetter: rotateFaceLetter,
     // facelet
     toFacelets: toFacelets, fromFacelets: fromFacelets, faceletsToString: faceletsToString,
+    partialCheck: partialCheck, pieceOf: pieceOf,
     validate: validate, parity: parity,
     // karıştırma
     randomScramble: randomScramble, fromScramble: fromScramble,

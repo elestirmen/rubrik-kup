@@ -9,8 +9,8 @@ Yayın adresi: https://rubrik.perinet.org
 
 | Bölüm | Ne yapar |
 |---|---|
-| **Oyna** | 3B küp, sürükleyerek katman döndürme, klavye notasyonu, karıştırma, kronometre (15 sn inceleme, ao5/ao12, rekorlar), ipucu ve otomatik çözüm |
-| **Küpümü Çöz** | Küpün renklerini 2B açılıma gir → geçerlilik denetimi → hamle hamle çözüm rehberi (3B önizleme, aşama haritası, yazdırma) |
+| **Oyna** | 3B küp; fare sol tuşuyla kareyi sürükle (katman döndür), sağ tuşla sürükle (görünümü çevir), dokunmatikte kare sürükle / boşluk sürükle; klavye notasyonu, karıştırma, kronometre (15 sn inceleme, ao5/ao12, rekorlar), ipucu ve otomatik çözüm |
+| **Küpümü Çöz** | Küpün renklerini 2B açılıma gir → girerken canlı denetim (her renkten en çok 9 kare, her kenar/köşe gerçek bir parçaya uymak zorunda, aynı parça iki kez girilemez) → hamle hamle çözüm rehberi (3B önizleme, aşama haritası, yazdırma) |
 | **Öğren** | Notasyon kartları, katman katman yöntemin yedi aşaması, ezberlenecek asgari algoritma seti |
 
 ## Dizin

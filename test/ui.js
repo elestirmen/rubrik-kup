@@ -116,6 +116,61 @@ const html = fs.readFileSync(path.join(WWW, 'index.html'), 'utf8');
   await tick(120);
   check('Geri al calisti', doc.querySelector('#play-movecount').textContent.indexOf('1 hamle') === 0);
 
+  // fare tuslari: sol tus hamle yapar, sag tus yalnizca goruntuyu cevirir
+  const stage = doc.querySelector('#play-stage');
+  const world = doc.querySelector('#play-stage .cube-world');
+  const movesNow = () => parseInt(doc.querySelector('#play-movecount').textContent, 10);
+  function ptr(el, type, x, y, button, buttons) {
+    const ev = new win.MouseEvent(type, {
+      bubbles: true, clientX: x, clientY: y,
+      button: button,
+      buttons: buttons !== undefined ? buttons : (type === 'pointerup' ? 0 : (button === 2 ? 2 : 1))
+    });
+    Object.defineProperty(ev, 'pointerId', { value: 7 });
+    Object.defineProperty(ev, 'pointerType', { value: 'mouse' });
+    el.dispatchEvent(ev);
+  }
+  async function dragMouse(el, button, dx, dy) {
+    ptr(el, 'pointerdown', 200, 200, button);
+    ptr(stage, 'pointermove', 200 + dx, 200 + dy, button);
+    ptr(stage, 'pointerup', 200 + dx, 200 + dy, button);
+    await tick(700);
+  }
+
+  const facets = Array.from(doc.querySelectorAll('#play-stage .facet'));
+  let mover = null;
+  for (const f of facets) {
+    const n = movesNow();
+    await dragMouse(f, 0, 70, 0);
+    if (movesNow() > n) { mover = f; break; }
+  }
+  check('Sol tusla surukleme hamle yapti', mover !== null);
+  check('Sol tus surukleme sonrasi hata yok', errors.length === 0, errors.slice(0, 2).join(' | '));
+
+  if (mover) {
+    const beforeMoves = movesNow();
+    const beforeView = world.style.transform;
+    await dragMouse(mover, 2, 70, 30);
+    check('Sag tus hamle yapmadi', movesNow() === beforeMoves, movesNow() + ' / ' + beforeMoves);
+    check('Sag tus goruntuyu cevirdi', world.style.transform !== beforeView, world.style.transform.slice(0, 50));
+  }
+
+  const beforeIdle = movesNow();
+  await dragMouse(stage, 0, 70, 0);
+  check('Sol tusla bosluga surukleme goruntuyu cevirmiyor', movesNow() === beforeIdle);
+
+  // sol tus basili degilse (buttons&1 === 0) hamle hicbir kosulda yapilmaz
+  if (mover) {
+    const m0 = movesNow();
+    const v0 = world.style.transform;
+    ptr(mover, 'pointerdown', 200, 200, 0, 2);
+    ptr(stage, 'pointermove', 270, 210, 0, 2);
+    ptr(stage, 'pointerup', 270, 210, 0, 0);
+    await tick(700);
+    check('Sol tus basili degilken hamle olmuyor', movesNow() === m0, movesNow() + ' / ' + m0);
+    check('Sol tus basili degilken goruntu cevriliyor', world.style.transform !== v0);
+  }
+
   click('#btn-scramble');
   await tick(2600);
   check('Karistirma listesi gosterildi', doc.querySelectorAll('#scramble-moves span').length === 22,
@@ -166,14 +221,56 @@ const html = fs.readFileSync(path.join(WWW, 'index.html'), 'utf8');
   await tick(50);
   check('Geri al: boyama silindi', doc.querySelectorAll('#net .net-cell[data-color]').length === 6);
 
-  // gecersiz kup: tum kareleri ayni renge boyayalim
+  // 9 kare siniri: tum kareleri ayni renge boyamaya calisalim
   const cells = Array.from(doc.querySelectorAll('#net .net-cell:not(.is-center)'));
   doc.querySelector('#palette .pal[data-face="F"]').dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
   cells.forEach(c => c.dispatchEvent(new win.MouseEvent('click', { bubbles: true })));
   await tick(150);
-  check('Gecersiz kup reddedildi', doc.querySelector('#btn-solve').disabled === true);
-  check('Hata mesaji uretildi', /renk|kose|kenar|9 kare/i.test(doc.querySelector('#validation').textContent),
-    doc.querySelector('#validation').textContent.slice(0, 80));
+  const fCount = doc.querySelectorAll('#net .net-cell[data-color="F"]').length;
+  check('Bir renk 9 kareyi asamiyor', fCount === 9, String(fCount));
+  check('Sinira ulasan renk paletde isaretli',
+    doc.querySelector('#palette .pal[data-face="F"]').classList.contains('is-full'));
+  check('Sayac 9/9 gosteriyor', /9\/9/.test(doc.querySelector('#counters').textContent),
+    doc.querySelector('#counters').textContent.slice(0, 80));
+  check('Eksik boyamada cozum dugmesi hala kapali', doc.querySelector('#btn-solve').disabled === true);
+
+  // parca tutarliligi: kenar 2, kose 3 renk ve birlesim gercek bir parca olmali
+  const pick = face => doc.querySelector('#palette .pal[data-face="' + face + '"]')
+    .dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
+  const paint = idx => doc.querySelector('#net .net-cell[data-index="' + idx + '"]')
+    .dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
+  const colorAt = idx => doc.querySelector('#net .net-cell[data-index="' + idx + '"]').dataset.color || null;
+
+  click('#btn-net-clear');
+  await tick(80);
+  pick('U'); paint(7);          // UF kenarinin U karesi
+  pick('D'); paint(19);         // ayni kenarin F karesi: U+D kenari olamaz
+  await tick(60);
+  check('Imkansiz kenar reddedildi (U+D)', colorAt(19) === null, String(colorAt(19)));
+  check('Kenar uyarisi verildi', /kenar/i.test(doc.querySelector('#toast').textContent),
+    doc.querySelector('#toast').textContent.slice(0, 70));
+  pick('F'); paint(19);
+  await tick(60);
+  check('Gecerli kenar rengi kabul edildi', colorAt(19) === 'F', String(colorAt(19)));
+
+  pick('U'); paint(8);          // URF kosesinin U karesi
+  pick('F'); paint(9);          // URF kosesinin R karesi -> parca UFL olmali
+  pick('R'); paint(20);         // ayna kose: boyle bir parca yok
+  await tick(60);
+  check('Ayna kose reddedildi', colorAt(20) === null, String(colorAt(20)));
+  check('Kose uyarisi verildi', /köşe/i.test(doc.querySelector('#toast').textContent),
+    doc.querySelector('#toast').textContent.slice(0, 70));
+  pick('L'); paint(20);
+  await tick(60);
+  check('Dogru kose rengi kabul edildi', colorAt(20) === 'L', String(colorAt(20)));
+
+  pick('U'); paint(5); pick('F'); paint(10);   // UR yuvasina ikinci bir UF kenari
+  await tick(60);
+  check('Ayni kenar iki kez reddedildi', colorAt(10) === null, String(colorAt(10)));
+  check('Tekrar uyarisi verildi', /zaten girilmiş/i.test(doc.querySelector('#toast').textContent),
+    doc.querySelector('#toast').textContent.slice(0, 70));
+  check('Tutarlilik onayi gosterildi', /tutarlı/i.test(doc.querySelector('#validation').textContent),
+    doc.querySelector('#validation').textContent.slice(0, 90));
 
   // ornek karisik kup
   click('#btn-net-clear');

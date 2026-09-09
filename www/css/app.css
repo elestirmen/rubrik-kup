@@ -534,6 +534,9 @@ main { max-width: var(--max-w); margin: 0 auto; padding: 22px max(16px, env(safe
 .pal__key { font-size: 10px; color: var(--text-dim); border: 1px solid var(--line); border-radius: 5px; padding: 0 4px; }
 .pal:hover { border-color: var(--line-strong); color: var(--text); }
 .pal.is-active { color: var(--text); border-color: var(--accent-line); background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-soft); }
+.pal.is-full { opacity: 0.55; }
+.pal.is-full .pal__key { color: var(--good); border-color: var(--good); }
+.pal.is-full.is-active { opacity: 1; }
 
 .net-wrap { overflow-x: auto; padding-bottom: 4px; }
 .net {
@@ -577,7 +580,7 @@ main { max-width: var(--max-w); margin: 0 auto; padding: 22px max(16px, env(safe
   background: rgba(0, 0, 0, 0.32);
 }
 .net.is-centers-editable .net-cell.is-center { cursor: pointer; outline: 1px dashed var(--accent-line); outline-offset: 1px; }
-.net-cell.is-bad { animation: shake 0.4s var(--ease); }
+.net-cell.is-bad { animation: shake 0.4s var(--ease); box-shadow: 0 0 0 2px var(--bad), 0 0 14px rgba(251, 113, 133, 0.45); z-index: 4; }
 @keyframes shake { 0%,100%{transform:none} 25%{transform:translateX(-3px)} 75%{transform:translateX(3px)} }
 
 .net-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 22px; flex-wrap: wrap; }

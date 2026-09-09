@@ -5,7 +5,8 @@
      bitince dönüş parçaların kendi matrisine işlenir
    * Işık: yüz normallerinin görünüm matrisiyle döndürülmüş hali üzerinden
      hesaplanır, CSS değişkenleri olarak yazılır (kare başına stil yazılmaz)
-   * Etkileşim: boşlukta sürükleme -> yörünge, kare üzerinde sürükleme -> katman
+   * Etkileşim (fare): sol tuş -> hamle, sağ tuş -> görünümü çevir
+   * Etkileşim (dokunmatik): kare üzerinde sürükleme -> hamle, boşlukta -> görünüm
    ===================================================================== */
 (function (root) {
   'use strict';
@@ -373,12 +374,20 @@
         return;
       }
       var facet = ev.target.closest ? ev.target.closest('.facet') : null;
+      /* Fare: sol tuş yalnızca hamle yapar, sağ (veya orta) tuş görünümü çevirir.
+         Dokunmatik/kalemde tuş ayrımı olmadığı için eski davranış sürer:
+         kare üzerinde sürükleme hamle, boşlukta sürükleme görünüm. */
+      var mode = 'idle';
+      if (ev.pointerType === 'mouse') {
+        mode = (ev.button === 0 && onUserMove) ? 'move' : 'orbit';
+      }
       drag = {
         id: ev.pointerId,
+        kind: ev.pointerType || 'mouse',
         x0: ev.clientX, y0: ev.clientY,
         yaw0: state.yaw, pitch0: state.pitch,
         facet: facet && facet._cubie ? facet : null,
-        mode: 'idle'
+        mode: mode
       };
       mount.classList.add('is-grabbing');
       mount.setPointerCapture && mount.setPointerCapture(ev.pointerId);
@@ -397,7 +406,13 @@
       }
       if (!drag || drag.id !== ev.pointerId) return;
       var dx = ev.clientX - drag.x0, dy = ev.clientY - drag.y0;
-      if (drag.mode === 'idle') {
+      /* Farede hamle yalnızca sol tuş basılıyken yapılır: sağ/orta tuşla
+         sürükleme her koşulda görünümü çevirir (pointerdown kaçsa bile). */
+      if (drag.kind === 'mouse' && drag.mode !== 'done' &&
+          ev.buttons !== undefined && (ev.buttons & 1) === 0) {
+        drag.mode = 'orbit';
+      }
+      if (drag.mode === 'idle' || drag.mode === 'move') {
         if (Math.hypot(dx, dy) < 14) return;
         if (drag.facet && !state.busy) {
           var mv = pickMove(drag.facet, drag.facet._cubie, dx, dy);
@@ -407,6 +422,7 @@
             return;
           }
         }
+        if (drag.mode === 'move') return; // sol tuş görünümü çevirmez
         drag.mode = 'orbit';
       }
       if (drag.mode === 'orbit') {
@@ -437,6 +453,8 @@
       mount.addEventListener('pointercancel', onPointerUp);
       mount.addEventListener('pointerleave', onPointerUp);
       mount.addEventListener('wheel', onWheel, { passive: false });
+      // sağ tuşla çevirirken tarayıcı menüsü açılmasın
+      mount.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
     }
 
     /* ---- kendiliğinden dönme ---- */
